@@ -97,7 +97,7 @@ function autoJoinLobby(username) {
 // });
 
 joinBtn.addEventListener("click", () => {
-  const username = usernameInput.value.trim().slice(0,12) || "Player";
+  const username = usernameInput.value.trim().slice(0, 12) || "Player";
   const code = joinCodeInput.value.trim();
   if (!code) return alert("Enter a lobby code");
   joinLobby(username, code);
@@ -109,9 +109,10 @@ joinBtn.addEventListener("click", () => {
 // });
 
 leaveBtn.addEventListener("click", () => {
-  sendMessage({ type: "LEAVE", playerId });
+  sendMessage({ type: "LEAVE", playerId, username });
   playerId = null;
   currentLobby = null;
+  username = null;
   lobbyDiv.style.display = "none";
   controlsDiv.style.display = "none";
   landing.style.display = "block";
