@@ -4,13 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lucky Lunar Shuffle - Controller</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; margin: 20px; }
-    #lobby, #controls { display: none; margin-top: 20px; }
-    input { padding: 8px; font-size: 16px; }
-    button { padding: 15px 30px; margin: 10px; font-size: 18px; }
-    #playerList div { margin: 5px 0; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -36,104 +30,7 @@
     </div>
   </div>
 
-  <script>
-    const serverUrl = "wss://lls-server-production-cde6.up.railway.app";
-    let ws;
-    let playerId = null;
-    let currentLobby = null;
-    let holdIntervalA = null;
-    let holdIntervalB = null;
-
-    const landing = document.getElementById("landing");
-    const lobbyDiv = document.getElementById("lobby");
-    const playerListDiv = document.getElementById("playerList");
-    const lobbyCodeSpan = document.getElementById("lobbyCode");
-    const usernameInput = document.getElementById("usernameInput");
-    const joinCodeInput = document.getElementById("joinCodeInput");
-
-    function connectWS() {
-      ws = new WebSocket(serverUrl);
-
-      ws.onopen = () => console.log("Connected to server");
-
-      ws.onmessage = (msg) => {
-        const data = JSON.parse(msg.data);
-
-        if (data.type === "LOBBY_JOINED" || data.type === "LOBBY_CREATED") {
-          playerId = data.playerId;
-          currentLobby = data.lobbyId;
-          lobbyCodeSpan.textContent = data.lobbyId;
-          landing.style.display = "none";
-          lobbyDiv.style.display = "block";
-          setupButtons();
-        }
-
-        if (data.type === "LOBBY_STATE") {
-          playerListDiv.innerHTML = data.players.map(p => `<div>${p.username} (${p.playerId})</div>`).join("");
-        }
-
-        if (data.type === "ERROR") {
-          alert(data.message);
-        }
-      };
-
-      ws.onclose = () => console.log("Disconnected from server");
-    }
-
-    function sendMessage(obj) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(obj));
-      }
-    }
-
-    document.getElementById("createBtn").addEventListener("click", () => {
-      const username = usernameInput.value.trim().slice(0,12) || "Player";
-      sendMessage({ type: "CREATE", username });
-      connectWS(); // ensure connection
-    });
-
-    document.getElementById("joinBtn").addEventListener("click", () => {
-      const username = usernameInput.value.trim().slice(0,12) || "Player";
-      const code = joinCodeInput.value.trim();
-      if (!code) return alert("Enter a lobby code");
-      sendMessage({ type: "JOIN_CODE", code, username });
-      connectWS();
-    });
-
-    document.getElementById("leaveBtn").addEventListener("click", () => {
-      sendMessage({ type: "LEAVE", playerId });
-      playerId = null;
-      currentLobby = null;
-      landing.style.display = "block";
-      lobbyDiv.style.display = "none";
-    });
-
-    // Button inputs
-    function sendInput(action) {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: "INPUT", playerId, action }));
-    }
-
-    function setupButtons() {
-      const btnA = document.getElementById("buttonA");
-      const btnB = document.getElementById("buttonB");
-
-      // Button A
-      btnA.addEventListener("mousedown", () => { sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
-      btnA.addEventListener("mouseup", () => clearInterval(holdIntervalA));
-      btnA.addEventListener("mouseleave", () => clearInterval(holdIntervalA));
-      btnA.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
-      btnA.addEventListener("touchend", () => clearInterval(holdIntervalA));
-
-      // Button B
-      btnB.addEventListener("mousedown", () => { sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
-      btnB.addEventListener("mouseup", () => clearInterval(holdIntervalB));
-      btnB.addEventListener("mouseleave", () => clearInterval(holdIntervalB));
-      btnB.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
-      btnB.addEventListener("touchend", () => clearInterval(holdIntervalB));
-
-      document.getElementById("controls").style.display = "block";
-    }
-  </script>
+  <!-- External JS -->
+  <script src="main.js"></script>
 </body>
 </html>
