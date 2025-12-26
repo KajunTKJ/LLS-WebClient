@@ -1,108 +1,113 @@
-const WebSocket = require('ws');
-const { v4: uuidv4 } = require('uuid');
+// ====== Configuration ======
+const serverUrl = "wss://lls-server-production-cde6.up.railway.app";
 
-const wss = new WebSocket.Server({ port: 8080 });
+// ====== DOM Elements ======
+const landing = document.getElementById("landing");
+const lobbyDiv = document.getElementById("lobby");
+const playerListDiv = document.getElementById("playerList");
+const lobbyCodeSpan = document.getElementById("lobbyCode");
+const usernameInput = document.getElementById("usernameInput");
+const joinCodeInput = document.getElementById("joinCodeInput");
+const createBtn = document.getElementById("createBtn");
+const joinBtn = document.getElementById("joinBtn");
+const leaveBtn = document.getElementById("leaveBtn");
+const controlsDiv = document.getElementById("controls");
+const buttonA = document.getElementById("buttonA");
+const buttonB = document.getElementById("buttonB");
 
-const lobbies = {}; // { lobbyId: { id, players: [{ socket, playerId, username }] } }
+// ====== State ======
+let ws;
+let playerId = null;
+let currentLobby = null;
+let holdIntervalA = null;
+let holdIntervalB = null;
 
-console.log("LLS WebSocket server running on port 8080");
+// ====== WebSocket Setup ======
+function connectWS() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  ws = new WebSocket(serverUrl);
 
-// Utility: broadcast lobby state
-function broadcastLobbyState(lobby) {
-  const state = {
-    type: "LOBBY_STATE",
-    lobbyId: lobby.id,
-    players: lobby.players.map(p => ({ playerId: p.playerId, username: p.username }))
+  ws.onopen = () => console.log("Connected to server");
+
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+
+    if (data.type === "LOBBY_CREATED" || data.type === "LOBBY_JOINED") {
+      playerId = data.playerId;
+      currentLobby = data.lobbyId;
+      lobbyCodeSpan.textContent = currentLobby;
+      landing.style.display = "none";
+      lobbyDiv.style.display = "block";
+      controlsDiv.style.display = "block";
+      console.log(`Joined lobby ${currentLobby}`);
+    }
+
+    if (data.type === "LOBBY_STATE") {
+      if (!currentLobby) return; // Only show lobby if player has joined
+      playerListDiv.innerHTML = data.players.map(p => `<div>${p.username} (${p.playerId})</div>`).join("");
+    }
+
+    if (data.type === "ERROR") {
+      alert(data.message);
+    }
   };
-  lobby.players.forEach(p => p.socket.send(JSON.stringify(state)));
+
+  ws.onclose = () => console.log("Disconnected from server");
 }
 
-// Create a new lobby
-function createLobby() {
-  let id;
-  do {
-    id = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4-char alphanumeric
-  } while (lobbies[id]);
-  lobbies[id] = { id, players: [] };
-  return lobbies[id];
+// ====== Sending Messages ======
+function sendMessage(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
 }
 
-wss.on('connection', (socket) => {
-  const playerId = uuidv4(); // unique per connection
-  let currentLobby = null;
-
-  console.log(`Player connected: ${playerId}`);
-
-  socket.on('message', (message) => {
-    let msg;
-    try { msg = JSON.parse(message); } 
-    catch(e) { return socket.send(JSON.stringify({ type: "ERROR", message: "Invalid JSON" })); }
-
-    const username = (msg.username || playerId).toString().slice(0,12);
-
-    // CREATE lobby
-    if (msg.type === "CREATE") {
-      currentLobby = createLobby();
-      currentLobby.players.push({ socket, playerId, username });
-
-      socket.send(JSON.stringify({
-        type: "LOBBY_CREATED",
-        lobbyId: currentLobby.id,
-        playerId,
-        playerCount: currentLobby.players.length
-      }));
-
-      console.log(`${playerId} created ${currentLobby.id}`);
-      broadcastLobbyState(currentLobby);
-    }
-
-    // JOIN_CODE
-    else if (msg.type === "JOIN_CODE") {
-      const lobby = lobbies[msg.code];
-      if (!lobby || lobby.players.length >= 4) {
-        socket.send(JSON.stringify({ type: "ERROR", message: "Invalid or full lobby" }));
-        return;
-      }
-      currentLobby = lobby;
-      currentLobby.players.push({ socket, playerId, username });
-
-      socket.send(JSON.stringify({
-        type: "LOBBY_JOINED",
-        lobbyId: currentLobby.id,
-        playerId,
-        playerCount: currentLobby.players.length
-      }));
-
-      console.log(`${playerId} joined ${currentLobby.id}`);
-      broadcastLobbyState(currentLobby);
-    }
-
-    // LEAVE
-    else if (msg.type === "LEAVE") {
-      if (!currentLobby) return;
-      currentLobby.players = currentLobby.players.filter(p => p.playerId !== playerId);
-      console.log(`${playerId} left ${currentLobby.id}`);
-
-      broadcastLobbyState(currentLobby);
-
-      // delete lobby if empty
-      if (currentLobby.players.length === 0) delete lobbies[currentLobby.id];
-      currentLobby = null;
-    }
-
-    // INPUT (A/B)
-    else if (msg.type === "INPUT") {
-      console.log(`Player ${msg.playerId} pressed ${msg.action}`);
-      // TODO: forward to Unity or handle game logic
-    }
-  });
-
-  socket.on('close', () => {
-    if (currentLobby) {
-      currentLobby.players = currentLobby.players.filter(p => p.playerId !== playerId);
-      console.log(`${playerId} disconnected from ${currentLobby.id}`);
-      broadcastLobbyState(currentLobby);
-      if (currentLobby.players.length === 0) delete lobbies[currentLobby.id];
-    }
-  });
+// ====== Lobby Actions ======
+createBtn.addEventListener("click", () => {
+  const username = usernameInput.value.trim().slice(0,12) || "Player";
+  connectWS();
+  sendMessage({ type: "CREATE", username });
 });
+
+joinBtn.addEventListener("click", () => {
+  const username = usernameInput.value.trim().slice(0,12) || "Player";
+  const code = joinCodeInput.value.trim();
+  if (!code) return alert("Enter a lobby code");
+  connectWS();
+  sendMessage({ type: "JOIN_CODE", code, username });
+});
+
+leaveBtn.addEventListener("click", () => {
+  sendMessage({ type: "LEAVE", playerId });
+  playerId = null;
+  currentLobby = null;
+  lobbyDiv.style.display = "none";
+  controlsDiv.style.display = "none";
+  landing.style.display = "block";
+});
+
+// ====== Input Handling ======
+function sendInput(action) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+  ws.send(JSON.stringify({ type: "INPUT", playerId, action }));
+}
+
+// Setup A/B buttons with hold
+function setupButtons() {
+  // Button A
+  buttonA.addEventListener("mousedown", () => { sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
+  buttonA.addEventListener("mouseup", () => clearInterval(holdIntervalA));
+  buttonA.addEventListener("mouseleave", () => clearInterval(holdIntervalA));
+  buttonA.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
+  buttonA.addEventListener("touchend", () => clearInterval(holdIntervalA));
+
+  // Button B
+  buttonB.addEventListener("mousedown", () => { sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
+  buttonB.addEventListener("mouseup", () => clearInterval(holdIntervalB));
+  buttonB.addEventListener("mouseleave", () => clearInterval(holdIntervalB));
+  buttonB.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
+  buttonB.addEventListener("touchend", () => clearInterval(holdIntervalB));
+}
+
+// Initialize button listeners once
+setupButtons();
