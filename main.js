@@ -16,18 +16,15 @@ const buttonA = document.getElementById("buttonA");
 const buttonB = document.getElementById("buttonB");
 
 // ====== State ======
-let ws;
+let ws = null;
 let playerId = null;
 let currentLobby = null;
 let holdIntervalA = null;
 let holdIntervalB = null;
 
-// ====== WebSocket Setup ======
-function connectWS() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
-  ws = new WebSocket(serverUrl);
-
-  ws.onopen = () => console.log("Connected to server");
+// ====== WebSocket Handlers ======
+function setupWSHandlers() {
+  if (!ws) return;
 
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
@@ -55,26 +52,43 @@ function connectWS() {
   ws.onclose = () => console.log("Disconnected from server");
 }
 
-// ====== Sending Messages ======
+// ====== Send Message ======
 function sendMessage(obj) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(obj));
-  }
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(obj));
 }
 
 // ====== Lobby Actions ======
+function createLobby(username) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    ws = new WebSocket(serverUrl);
+    ws.onopen = () => sendMessage({ type: "CREATE", username });
+    setupWSHandlers();
+  } else {
+    sendMessage({ type: "CREATE", username });
+  }
+}
+
+function joinLobby(username, code) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    ws = new WebSocket(serverUrl);
+    ws.onopen = () => sendMessage({ type: "JOIN_CODE", username, code });
+    setupWSHandlers();
+  } else {
+    sendMessage({ type: "JOIN_CODE", username, code });
+  }
+}
+
 createBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim().slice(0,12) || "Player";
-  connectWS();
-  sendMessage({ type: "CREATE", username });
+  createLobby(username);
 });
 
 joinBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim().slice(0,12) || "Player";
   const code = joinCodeInput.value.trim();
   if (!code) return alert("Enter a lobby code");
-  connectWS();
-  sendMessage({ type: "JOIN_CODE", code, username });
+  joinLobby(username, code);
 });
 
 leaveBtn.addEventListener("click", () => {
@@ -109,5 +123,5 @@ function setupButtons() {
   buttonB.addEventListener("touchend", () => clearInterval(holdIntervalB));
 }
 
-// Initialize button listeners once
+// Initialize buttons once
 setupButtons();
