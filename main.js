@@ -109,7 +109,7 @@ joinBtn.addEventListener("click", () => {
 // });
 
 leaveBtn.addEventListener("click", () => {
-  sendMessage({ type: "LEAVE", playerId, username });
+  sendMessage({ type: "LEAVE", username });
   playerId = null;
   currentLobby = null;
   username = null;
