@@ -10,6 +10,7 @@ const usernameInput = document.getElementById("usernameInput");
 const joinCodeInput = document.getElementById("joinCodeInput");
 const createBtn = document.getElementById("createBtn");
 const joinBtn = document.getElementById("joinBtn");
+const playBtn = document.getElementById("playBtn");
 const leaveBtn = document.getElementById("leaveBtn");
 const controlsDiv = document.getElementById("controls");
 const buttonA = document.getElementById("buttonA");
@@ -79,6 +80,17 @@ function joinLobby(username, code) {
   }
 }
 
+function autoJoinLobby(username) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    ws = new WebSocket(serverUrl);
+    ws.onopen = () => sendMessage({ type: "AUTOJOIN", username });
+    setupWSHandlers();
+  } else {
+    sendMessage({ type: "AUTOJOIN", username });
+  }
+}
+
+// ====== Button Listeners ======
 createBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim().slice(0,12) || "Player";
   createLobby(username);
@@ -89,6 +101,11 @@ joinBtn.addEventListener("click", () => {
   const code = joinCodeInput.value.trim();
   if (!code) return alert("Enter a lobby code");
   joinLobby(username, code);
+});
+
+playBtn.addEventListener("click", () => {
+  const username = usernameInput.value.trim().slice(0,12) || "Player";
+  autoJoinLobby(username);
 });
 
 leaveBtn.addEventListener("click", () => {
