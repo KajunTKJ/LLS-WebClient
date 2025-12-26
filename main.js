@@ -91,10 +91,10 @@ function autoJoinLobby(username) {
 }
 
 // ====== Button Listeners ======
-createBtn.addEventListener("click", () => {
-  const username = usernameInput.value.trim().slice(0,12) || "Player";
-  createLobby(username);
-});
+// createBtn.addEventListener("click", () => {
+//   const username = usernameInput.value.trim().slice(0,12) || "Player";
+//   createLobby(username);
+// });
 
 joinBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim().slice(0,12) || "Player";
@@ -103,10 +103,10 @@ joinBtn.addEventListener("click", () => {
   joinLobby(username, code);
 });
 
-playBtn.addEventListener("click", () => {
-  const username = usernameInput.value.trim().slice(0,12) || "Player";
-  autoJoinLobby(username);
-});
+// playBtn.addEventListener("click", () => {
+//   const username = usernameInput.value.trim().slice(0,12) || "Player";
+//   autoJoinLobby(username);
+// });
 
 leaveBtn.addEventListener("click", () => {
   sendMessage({ type: "LEAVE", playerId });
