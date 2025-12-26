@@ -14,11 +14,13 @@
 
 <div id="landing">
   <h1>Lucky Lunar Shuffle</h1>
+  <input type="text" id="usernameInput" placeholder="Enter username (max 12)">
   <button id="playBtn">Play</button>
   <div>
     <input type="text" id="codeInput" placeholder="Enter lobby code">
     <button id="joinCodeBtn">Join Code</button>
   </div>
+  <button id="createBtn">Create Lobby</button>
 </div>
 
 <div id="lobby">
@@ -45,13 +47,12 @@ function showLobby() {
   document.getElementById("lobby").style.display = "block"
 }
 
-// Initialize WebSocket
 function connectWS() {
+  if (ws && ws.readyState === WebSocket.OPEN) return
+
   ws = new WebSocket(serverUrl)
 
-  ws.onopen = () => {
-    console.log("Connected to server")
-  }
+  ws.onopen = () => { console.log("Connected to server") }
 
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data)
@@ -60,7 +61,7 @@ function connectWS() {
     if (data.type === "LOBBY_STATE") {
       currentLobby = data
       document.getElementById("lobbyCode").textContent = data.lobbyId
-      const players = data.players.map(p => `<div>${p}</div>`).join("")
+      const players = data.players.map(p => `<div>${p.username} (${p.playerId})</div>`).join("")
       document.getElementById("playerList").innerHTML = players
       showLobby()
     }
@@ -77,27 +78,35 @@ function connectWS() {
   }
 }
 
-// Landing page buttons
+// --- Button Handlers ---
+
 document.getElementById("playBtn").onclick = () => {
-  if (!ws || ws.readyState !== WebSocket.OPEN) connectWS()
-  ws.send(JSON.stringify({ type: "JOIN" }))
+  const username = document.getElementById("usernameInput").value.trim().slice(0,12) || "Player"
+  connectWS()
+  ws.send(JSON.stringify({ type: "JOIN", username }))
 }
 
 document.getElementById("joinCodeBtn").onclick = () => {
   const code = document.getElementById("codeInput").value.trim()
+  const username = document.getElementById("usernameInput").value.trim().slice(0,12) || "Player"
   if (!code) return alert("Enter a code!")
-  if (!ws || ws.readyState !== WebSocket.OPEN) connectWS()
-  ws.send(JSON.stringify({ type: "JOIN_CODE", code }))
+  connectWS()
+  ws.send(JSON.stringify({ type: "JOIN_CODE", code, username }))
 }
 
-// Leave lobby button
+document.getElementById("createBtn").onclick = () => {
+  const username = document.getElementById("usernameInput").value.trim().slice(0,12) || "Player"
+  connectWS()
+  ws.send(JSON.stringify({ type: "CREATE", username }))
+}
+
 document.getElementById("leaveBtn").onclick = () => {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "LEAVE" }))
   }
 }
 
-// Show landing page initially
+// Show landing initially
 showLanding()
 </script>
 
