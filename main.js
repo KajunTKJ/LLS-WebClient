@@ -1,145 +1,140 @@
-// ====== Configuration ======
-const serverUrl = "wss://lls-server-production-cde6.up.railway.app";
+// --------------------
+// WebSocket Setup
+// --------------------
 
-// ====== DOM Elements ======
-const landing = document.getElementById("landing");
-const lobbyDiv = document.getElementById("lobby");
-const playerListDiv = document.getElementById("playerList");
-const lobbyCodeSpan = document.getElementById("lobbyCode");
-const usernameInput = document.getElementById("usernameInput");
-const joinCodeInput = document.getElementById("joinCodeInput");
-// const createBtn = document.getElementById("createBtn");
-const joinBtn = document.getElementById("joinBtn");
-// const playBtn = document.getElementById("playBtn");
-const leaveBtn = document.getElementById("leaveBtn");
-const controlsDiv = document.getElementById("controls");
-const buttonA = document.getElementById("buttonA");
-const buttonB = document.getElementById("buttonB");
-
-// ====== State ======
+const SERVER_URL = "wss://lls-server-production-cde6.up.railway.app";
 let ws = null;
-let playerId = null;
-let currentLobby = null;
-let holdIntervalA = null;
-let holdIntervalB = null;
 
-// ====== WebSocket Handlers ======
-function setupWSHandlers() {
-  if (!ws) return;
+// --------------------
+// UI References
+// --------------------
 
-  ws.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
+const landingUI = document.getElementById("landing");
+const lobbyUI = document.getElementById("lobby");
 
-    if (data.type === "LOBBY_CREATED" || data.type === "LOBBY_JOINED") {
-      playerId = data.playerId;
-      currentLobby = data.lobbyId;
-      lobbyCodeSpan.textContent = currentLobby;
-      landing.style.display = "none";
-      lobbyDiv.style.display = "block";
-      controlsDiv.style.display = "block";
-      console.log(`Joined lobby ${currentLobby}`);
-    }
+const joinBtn = document.getElementById("joinBtn");
+const createBtn = document.getElementById("createBtn");
 
-    if (data.type === "LOBBY_STATE") {
-      if (!currentLobby) return; // Only show lobby if player has joined
-      playerListDiv.innerHTML = data.players.map(p => `<div>${p.username} (${p.playerId})</div>`).join("");
-    }
+const codeInput = document.getElementById("codeInput");
+const usernameInput = document.getElementById("usernameInput");
 
-    if (data.type === "ERROR") {
-      alert(data.message);
-    }
+const lobbyCodeText = document.getElementById("lobbyCode");
+const playerIdText = document.getElementById("playerId");
+const statusText = document.getElementById("status");
+
+// --------------------
+// Client State
+// --------------------
+
+let currentLobbyId = null;
+let currentPlayerId = null;
+
+// --------------------
+// Connect to Server
+// --------------------
+
+function connect() {
+  ws = new WebSocket(SERVER_URL);
+
+  ws.onopen = () => {
+    console.log("Connected to server");
+    statusText.textContent = "Connected";
   };
 
-  ws.onclose = () => console.log("Disconnected from server");
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    console.log("Server:", msg);
+
+    handleServerMessage(msg);
+  };
+
+  ws.onclose = () => {
+    console.log("Disconnected");
+    statusText.textContent = "Disconnected";
+    showLanding();
+  };
 }
 
-// ====== Send Message ======
-function sendMessage(obj) {
+connect();
+
+// --------------------
+// Message Handler
+// --------------------
+
+function handleServerMessage(msg) {
+  switch (msg.type) {
+
+    case "JOIN_SUCCESS":
+      currentLobbyId = msg.lobbyId;
+      currentPlayerId = msg.playerId;
+      showLobby();
+      break;
+
+    case "LOBBY_CREATED":
+      currentLobbyId = msg.lobbyId;
+      showLobby(true);
+      break;
+
+    case "ERROR":
+      alert(msg.message);
+      break;
+
+    case "LOBBY_CLOSED":
+      alert("Lobby closed");
+      resetState();
+      break;
+  }
+}
+
+// --------------------
+// UI Transitions
+// --------------------
+
+function showLobby(isHost = false) {
+  landingUI.style.display = "none";
+  lobbyUI.style.display = "block";
+
+  lobbyCodeText.textContent = currentLobbyId;
+  playerIdText.textContent = isHost ? "HOST" : currentPlayerId;
+}
+
+function showLanding() {
+  landingUI.style.display = "block";
+  lobbyUI.style.display = "none";
+}
+
+function resetState() {
+  currentLobbyId = null;
+  currentPlayerId = null;
+  showLanding();
+}
+
+// --------------------
+// Button Actions
+// --------------------
+
+joinBtn.onclick = () => {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(obj));
-}
 
-// ====== Lobby Actions ======
-function createLobby(username) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    ws = new WebSocket(serverUrl);
-    ws.onopen = () => sendMessage({ type: "CREATE", username });
-    setupWSHandlers();
-  } else {
-    sendMessage({ type: "CREATE", username });
+  const code = codeInput.value.trim().toUpperCase();
+  const username = usernameInput.value.trim().substring(0, 12);
+
+  if (!code || !username) {
+    alert("Enter lobby code and username");
+    return;
   }
-}
 
-function joinLobby(username, code) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    ws = new WebSocket(serverUrl);
-    ws.onopen = () => sendMessage({ type: "JOIN_CODE", username, code });
-    setupWSHandlers();
-  } else {
-    sendMessage({ type: "JOIN_CODE", username, code });
-  }
-}
+  ws.send(JSON.stringify({
+    type: "JOIN_CODE",
+    code,
+    username
+  }));
+};
 
-function autoJoinLobby(username) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    ws = new WebSocket(serverUrl);
-    ws.onopen = () => sendMessage({ type: "AUTOJOIN", username });
-    setupWSHandlers();
-  } else {
-    sendMessage({ type: "AUTOJOIN", username });
-  }
-}
+createBtn.onclick = () => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-// ====== Button Listeners ======
-// createBtn.addEventListener("click", () => {
-//   const username = usernameInput.value.trim().slice(0,12) || "Player";
-//   createLobby(username);
-// });
-
-joinBtn.addEventListener("click", () => {
-  const username = usernameInput.value.trim().slice(0, 12) || "Player";
-  const code = joinCodeInput.value.trim();
-  if (!code) return alert("Enter a lobby code");
-  joinLobby(username, code);
-});
-
-// playBtn.addEventListener("click", () => {
-//   const username = usernameInput.value.trim().slice(0,12) || "Player";
-//   autoJoinLobby(username);
-// });
-
-leaveBtn.addEventListener("click", () => {
-  sendMessage({ type: "LEAVE", playerId, username });
-  playerId = null;
-  currentLobby = null;
-  username = null;
-  lobbyDiv.style.display = "none";
-  controlsDiv.style.display = "none";
-  landing.style.display = "block";
-});
-
-// ====== Input Handling ======
-function sendInput(action) {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
-  ws.send(JSON.stringify({ type: "INPUT", playerId, action }));
-}
-
-// Setup A/B buttons with hold
-function setupButtons() {
-  // Button A
-  buttonA.addEventListener("mousedown", () => { sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
-  buttonA.addEventListener("mouseup", () => clearInterval(holdIntervalA));
-  buttonA.addEventListener("mouseleave", () => clearInterval(holdIntervalA));
-  buttonA.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("A"); holdIntervalA = setInterval(() => sendInput("A"), 100); });
-  buttonA.addEventListener("touchend", () => clearInterval(holdIntervalA));
-
-  // Button B
-  buttonB.addEventListener("mousedown", () => { sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
-  buttonB.addEventListener("mouseup", () => clearInterval(holdIntervalB));
-  buttonB.addEventListener("mouseleave", () => clearInterval(holdIntervalB));
-  buttonB.addEventListener("touchstart", (e) => { e.preventDefault(); sendInput("B"); holdIntervalB = setInterval(() => sendInput("B"), 100); });
-  buttonB.addEventListener("touchend", () => clearInterval(holdIntervalB));
-}
-
-// Initialize buttons once
-setupButtons();
+  ws.send(JSON.stringify({
+    type: "CREATE"
+  }));
+};

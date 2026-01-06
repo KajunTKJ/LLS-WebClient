@@ -1,40 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lucky Lunar Shuffle - Controller</title>
+  <meta charset="UTF-8" />
+  <title>Lucky Lunar Shuffle Controller</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Optional, does NOT affect functionality -->
+  <!-- <link rel="stylesheet" href="style.css"> -->
+
   <style>
-    body { font-family: sans-serif; text-align: center; margin: 20px; }
-    #lobby, #controls { display: none; margin-top: 20px; }
-    input { padding: 8px; font-size: 16px; }
-    button { padding: 15px 30px; margin: 10px; font-size: 18px; }
-    #playerList div { margin: 5px 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+      margin: 6px 0;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
 
-  <!-- Landing Page -->
+  <h1>🐉 Lucky Lunar Shuffle</h1>
+
+  <!-- ========================= -->
+  <!-- Landing / Join Screen -->
+  <!-- ========================= -->
   <div id="landing">
-    <h1>Lucky Lunar Shuffle</h1>
-    <input type="text" id="usernameInput" placeholder="Enter username (max 12)" maxlength="12"><br><br>
-    <input type="text" id="joinCodeInput" placeholder="Lobby Code" oninput="this.value = this.value.toUpperCase();">
+
+    <p>Enter your name and lobby code</p>
+
+    <input
+      id="usernameInput"
+      type="text"
+      placeholder="Username (max 12)"
+      maxlength="12"
+    />
+
+    <input
+      id="codeInput"
+      type="text"
+      placeholder="Lobby Code"
+    />
+
+    <br />
+
     <button id="joinBtn">Join Lobby</button>
+    <button id="createBtn">Create Lobby (Host)</button>
+
+    <p id="status">Connecting…</p>
+
   </div>
 
-  <!-- In-Lobby Page -->
-  <div id="lobby">
-    <h2>Lobby: <span id="lobbyCode">---</span></h2>
-    <div id="playerList"></div>
+  <!-- ========================= -->
+  <!-- In-Lobby Screen -->
+  <!-- ========================= -->
+  <div id="lobby" class="hidden">
+
+    <h2>🎮 In Lobby</h2>
+
+    <p>
+      Lobby Code:
+      <strong><span id="lobbyCode"></span></strong>
+    </p>
+
+    <p>
+      Player:
+      <strong><span id="playerId"></span></strong>
+    </p>
+
     <button id="leaveBtn">Leave Lobby</button>
 
-    <!-- Controls -->
-    <div id="controls">
-      <button id="buttonA">A</button>
-      <button id="buttonB">B</button>
-    </div>
+    <hr />
+
+    <!-- Placeholder for future controls -->
+    <p>Controls coming soon…</p>
+
   </div>
 
+  <!-- ========================= -->
+  <!-- Script -->
+  <!-- ========================= -->
   <script src="main.js"></script>
+
 </body>
 </html>
